@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>星轨远征</title>
+<style>
+  :root{
+    --bg:#070b18; --panel:rgba(255,255,255,.055); --line:rgba(255,255,255,.13);
+    --cyan:#5ce1ff; --gold:#ffd166; --muted:#9aa8c7; --text:#eaf1ff;
+    --green:#4be3a4; --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;color:var(--text);min-height:100dvh;
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    background:radial-gradient(900px 600px at 20% -10%, #16224a 0%, transparent 60%),
+               radial-gradient(900px 600px at 90% 10%, #2a1640 0%, transparent 55%),
+               var(--bg);
+    overflow-x:hidden; user-select:none;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.65;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 32% 72%, #cfe6ff, transparent),
+      radial-gradient(1.5px 1.5px at 56% 28%, #fff, transparent),
+      radial-gradient(1px 1px at 74% 64%, #ffe9b0, transparent),
+      radial-gradient(1px 1px at 88% 22%, #fff, transparent),
+      radial-gradient(1px 1px at 44% 92%, #9fd8ff, transparent),
+      radial-gradient(1px 1px at 6% 56%, #fff, transparent);
+    background-size:320px 320px,280px 280px,360px 360px,300px 300px,340px 340px,260px 260px,240px 240px;
+    animation:twinkle 6s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle{from{opacity:.3}to{opacity:.8}}
+
+  #app{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:14px 12px 22px;}
+  .screen{display:none;animation:fadein .35s ease;}
+  .screen.active{display:block;}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  button{font-family:inherit;color:var(--text);border:1px solid rgba(255,255,255,.16);border-radius:13px;
+    background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+    padding:13px 12px;font-size:15px;font-weight:700;cursor:pointer;transition:transform .1s,opacity .2s,filter .2s;}
+  button:active:not(:disabled){transform:scale(.97);}
+  button:disabled{opacity:.36;filter:grayscale(.4);cursor:not-allowed;}
+  button small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:2px;}
+
+  /* 大厅 */
+  .logo{font-size:38px;font-weight:900;letter-spacing:6px;text-align:center;margin-top:46px;
+    background:linear-gradient(180deg,#eaf6ff,#5ce1ff 55%,#8a6bff);-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 34px rgba(92,225,255,.35);}
+  .sub{text-align:center;color:var(--muted);font-size:12px;letter-spacing:3px;margin:8px 0 30px;}
+  .resources{display:flex;gap:10px;margin-bottom:22px;}
+  .res{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px;text-align:center;
+    backdrop-filter:blur(6px);}
+  .res span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;}
+  .res b{font-size:19px;color:var(--gold);font-variant-numeric:tabular-nums;}
+  .res.stage b{color:var(--cyan);}
+  .lobby-btns{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .lobby-btns .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .big{padding:18px;font-size:17px;}
+  .primary{background:linear-gradient(180deg,#3fb7ff,#2a6cf0);border-color:#9fdcff;
+    box-shadow:0 8px 26px rgba(63,183,255,.28);}
+  .hint{margin-top:26px;text-align:center;font-size:11px;color:var(--muted);line-height:1.8;}
+
+  /* 顶栏 */
+  .btop{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .ghost{padding:8px 12px;font-size:14px;background:rgba(255,255,255,.06);}
+  .btop .stage{flex:1;text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
+  .btop .stage b{display:block;font-size:15px;color:var(--text);}
+  .spwrap{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted);}
+  .pips{display:flex;gap:3px;}
+  .pip{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);}
+  .pip.on{background:var(--cyan);box-shadow:0 0 8px var(--cyan);border-color:#c9f3ff;}
+  .orb{font-size:13px;color:var(--gold);background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:6px 9px;white-space:nowrap;}
+  .orb b{margin-left:3px;}
+
+  /* 回合顺序 */
+  .order{display:flex;gap:6px;overflow-x:auto;padding:6px 2px;margin-bottom:6px;scrollbar-width:none;}
+  .order::-webkit-scrollbar{display:none;}
+  .ord{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px;
+    background:#0a1024;border:2px solid rgba(255,255,255,.18);position:relative;}
+  .ord.ally{border-color:rgba(92,225,255,.65);}
+  .ord.enemy{border-color:rgba(255,107,107,.65);}
+  .ord.now{transform:scale(1.18);box-shadow:0 0 14px rgba(92,225,255,.8);border-color:#fff;}
+  .ord.dead{display:none;}
+
+  /* 战场 */
+  .field-wrap{perspective:1100px;margin:4px 0 8px;}
+  .field{display:flex;justify-content:space-between;gap:10px;padding:12px 8px 18px;border-radius:16px;
+    border:1px solid var(--line);
+    background:
+      radial-gradient(ellipse at 50% 130%, rgba(92,225,255,.13), transparent 62%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 42px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 42px),
+      rgba(8,13,30,.55);
+    transform:rotateX(8deg);transform-style:preserve-3d;
+    box-shadow:0 26px 40px rgba(0,0,0,.55), inset 0 0 60px rgba(80,140,255,.08);
+  }
+  .side{display:grid;gap:7px;align-content:center;}
+  .side.allies{grid-template-columns:repeat(2,1fr);width:44%;}
+  .side.enemies{grid-template-columns:repeat(2,1fr);width:53%;}
+
+  .unit{position:relative;text-align:center;padding:6px 5px;border-radius:11px;
+    border:1px solid rgba(255,255,255,.14);
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.025));
+    box-shadow:0 8px 16px rgba(0,0,0,.45);transition:box-shadow .2s,border-color .2s,opacity .3s,filter .3s;
+    cursor:default;}
+  .unit .avatar{font-size:30px;line-height:1.1;position:relative;display:inline-block;
+    filter:drop-shadow(0 0 8px var(--el,#fff));}
+  .unit .tier{position:absolute;right:-10px;bottom:-2px;font-size:9px;font-weight:800;color:#0a0f20;
+    background:var(--cyan);border-radius:4px;padding:0 3px;}
+  .tier.S{background:var(--gold);}.tier.A{background:#b58cff;}.tier.B{background:#5ce1ff;}
+  .uname{font-size:10.5px;color:#cfd9ee;margin:2px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bar{height:6px;border-radius:99px;background:rgba(0,0,0,.5);overflow:hidden;border:1px solid rgba(255,255,255,.10);}
+  .bar i{display:block;height:100%;border-radius:99px;transition:width .3s ease;}
+  .bar.hp i{background:linear-gradient(90deg,#1ec98c,#5cf0c1);}
+  .unit.enemy .bar.hp i{background:linear-gradient(90deg,#ff4d4d,#ffa14d);}
+  .bar.en{height:4px;margin-top:3px;}
+  .bar.en i{background:linear-gradient(90deg,#3f8cff,#9fd8ff);}
+  .unit.ally.active{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(92,225,255,.5),0 0 22px rgba(92,225,255,.55);}
+  .unit.ally.active::after{content:"行动中";position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+    font-size:9px;background:var(--cyan);color:#04121c;border-radius:5px;padding:0 5px;font-weight:800;letter-spacing:1px;}
+  .unit.enemy{cursor:pointer;}
+  .unit.enemy.sel{border-color:#ff6b6b;box-shadow:0 0 0 1px rgba(255,107,107,.7),0 0 20px rgba(255,107,107,.45);}
+  .unit.enemy.sel::before{content:"⌖";position:absolute;top:-11px;right:-4px;font-size:15px;color:#ff8b8b;}
+  .unit.dead{filter:grayscale(1) brightness(.55);opacity:.5;}
+  .unit.hit{animation:shake .3s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}55%{transform:translateX(5px)}80%{transform:translateX(-3px)}}
+  .unit.taunt{border-color:#ffd166;}
+
+  /* 日志与技能栏 */
+  .auto-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .auto-row .activeInfo{flex:1;margin-bottom:0;text-align:left;}
+  #btnAuto{font-size:11px;padding:6px 10px;background:rgba(255,255,255,.06);white-space:nowrap;}
+  #btnAuto.on{background:linear-gradient(180deg,#3fb7ff,#2a6cf0);border-color:#9fdcff;box-shadow:0 0 12px rgba(92,225,255,.45);}
+  .blog{min-height:42px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:11px;
+    padding:7px 11px;font-size:11.5px;line-height:1.55;color:var(--muted);margin-bottom:8px;
+    max-height:64px;overflow:hidden;}
+  .blog p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .blog .ally{color:#a9ecff;}
+  .blog .enemy{color:#ffb3b3;}
+  .blog .sys{color:#ffe6a1;}
+  .skillbar{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;}
+  .activeInfo{font-size:11px;color:var(--muted);margin-bottom:8px;text-align:center;min-height:15px;}
+  .activeInfo b{color:var(--text);font-size:12.5px;}
+  .skills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .skills button{padding:11px 4px;font-size:13.5px;min-height:58px;}
+  .skills button b{display:block;font-size:13.5px;line-height:1.3;}
+  #btnBasic{background:linear-gradient(180deg,#3aa7ff,#2563d8);border-color:#9fd8ff;}
+  #btnSkill{background:linear-gradient(180deg,#b06bff,#6c33d6);border-color:#d8b6ff;}
+  #btnUlt{background:linear-gradient(180deg,#ffd166,#e0a11b);border-color:#ffe9a8;color:#241300;}
+
+  /* 抽卡 */
+  .page-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .page-head h2{margin:0;font-size:20px;letter-spacing:2px;}
+  .gacha-banner{border:1px solid var(--line);border-radius:16px;padding:22px 16px;text-align:center;
+    background:radial-gradient(circle at 50% 0%, rgba(255,209,102,.18), transparent 62%),
+               radial-gradient(circle at 20% 100%, rgba(92,225,255,.14), transparent 55%), var(--panel);
+    margin-bottom:14px;}
+  .gacha-banner .big-orb{font-size:44px;filter:drop-shadow(0 0 18px rgba(255,209,102,.75));}
+  .gacha-banner h3{margin:8px 0 4px;font-size:18px;}
+  .gacha-banner p{margin:0;font-size:11px;color:var(--muted);line-height:1.8;}
+  .rates{display:flex;justify-content:center;gap:14px;font-size:11px;color:var(--muted);margin-bottom:16px;}
+  .rates b{color:var(--gold);}
+  .gacha-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .gacha-btns button{padding:16px;font-size:16px;}
+  #btnPull1{background:linear-gradient(180deg,#4a8cff,#2a5bd7);border-color:#9fc4ff;}
+  #btnPull10{background:linear-gradient(180deg,#ffcf5c,#e09a12);border-color:#ffe9a8;color:#241300;}
+  .pity{text-align:center;font-size:11px;color:var(--muted);margin-top:10px;}
+
+  /* 队伍 */
+  .team-hint{font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;}
+  .team-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .tcard{position:relative;border:1px solid var(--line);border-radius:13px;padding:10px;background:var(--panel);
+    transition:border-color .2s,box-shadow .2s;cursor:pointer;}
+  .tcard.on{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(92,225,255,.4),0 0 18px rgba(92,225,255,.22);}
+  .tcard .top{display:flex;align-items:center;gap:8px;}
+  .tcard .em{font-size:30px;filter:drop-shadow(0 0 8px var(--el,#fff));}
+  .tcard .meta{flex:1;min-width:0;}
+  .tcard .nm{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;}
+  .tcard .el{font-size:10px;color:var(--muted);margin-top:2px;}
+  .tcard .st{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.6;}
+  .tcard .badge{position:absolute;right:8px;top:8px;font-size:9px;padding:1px 5px;border-radius:5px;
+    background:rgba(92,225,255,.2);border:1px solid rgba(92,225,255,.5);color:#bff1ff;}
+  .tcard.on .badge{background:rgba(92,225,255,.85);color:#04121c;font-weight:800;}
+
+  /* 弹窗 */
+  .modal{position:fixed;inset:0;background:rgba(3,6,16,.78);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px;}
+  .modal.show{display:flex;}
+  .modal-box{width:100%;max-width:520px;max-height:86dvh;overflow-y:auto;background:#0c1226;
+    border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:18px;box-shadow:0 26px 70px rgba(0,0,0,.7);
+    animation:pop .28s ease;}
+  @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
+  .modal-box h3{margin:0 0 12px;text-align:center;font-size:18px;}
+  .modal-box p{font-size:12px;color:var(--muted);line-height:1.8;margin:6px 0;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-actions button{flex:1;padding:13px;}
+  .card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .pull-card{border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;
+    background:rgba(255,255,255,.04);animation:reveal .4s backwards;}
+  .pull-card .em{font-size:24px;}
+  .pull-card .nm{font-size:10px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pull-card.S{border-color:#ffd166;box-shadow:0 0 16px rgba(255,209,102,.55);background:rgba(255,209,102,.10);}
+  .pull-card.A{border-color:#b58cff;box-shadow:0 0 12px rgba(181,140,255,.4);}
+  .pull-card.B{border-color:#5ce1ff;}
+  .pull-card .t{font-size:9px;color:var(--muted);margin-top:2px;}
+  @keyframes reveal{from{opacity:0;transform:translateY(10px) scale(.9)}to{opacity:1;transform:none}}
+
+  /* 特效层 */
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:55;overflow:hidden;}
+  .fnum{position:absolute;transform:translate(-50%,-50%);font-weight:900;font-size:20px;color:#ffd166;
+    text-shadow:0 2px 10px #000;animation:fnum .85s ease-out forwards;}
+  .fnum.crit{font-size:26px;color:#ffe08a;}
+  .fnum.heal{color:#63f0b8;}
+  .fnum.enemyDmg{color:#ff8b8b;}
+  @keyframes fnum{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}
+    20%{opacity:1;transform:translate(-50%,-60%) scale(1.1)}
+    100%{opacity:0;transform:translate(-50%,-150%) scale(1)}}
+  .slash{position:absolute;width:90px;height:4px;border-radius:99px;
+    background:linear-gradient(90deg,transparent,#fff,transparent);transform:translate(-50%,-50%) rotate(-35deg);
+    box-shadow:0 0 14px #fff;animation:slash .38s ease-out forwards;}
+  @keyframes slash{0%{opacity:0;transform:translate(-50%,-50%) rotate(-35deg) scaleX(.2)}
+    35%{opacity:1;transform:translate(-50%,-50%) rotate(-35deg) scaleX(1.2)}
+    100%{opacity:0;transform:translate(-50%,-50%) rotate(-35deg) scaleX(1.5)}}
+  .ring{position:absolute;width:20px;height:20px;border-radius:50%;border:2px solid var(--rc,#5ce1ff);
+    transform:translate(-50%,-50%);animation:ring .6s ease-out forwards;}
+  @keyframes ring{0%{opacity:.9;width:10px;height:10px}100%{opacity:0;width:110px;height:110px}}
+  .ultlayer{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%, rgba(0,0,0,.55), rgba(3,6,16,.9));
+    display:grid;place-items:center;z-index:56;animation:ultdim .25s ease;}
+  @keyframes ultdim{from{opacity:0}to{opacity:1}}
+  .ultlayer .caster{font-size:88px;filter:drop-shadow(0 0 34px var(--uc,#5ce1ff));
+    animation:ultzoom .55s ease-out forwards;}
+  .ultlayer .uname2{margin-top:10px;font-size:16px;letter-spacing:4px;color:#fff;text-shadow:0 0 18px var(--uc,#5ce1ff);}
+  @keyframes ultzoom{0%{transform:scale(.4);opacity:0}40%{opacity:1;transform:scale(1.12)}100%{transform:scale(1)}}
+  .shake{animation:bigshake .5s;}
+  @keyframes bigshake{0%,100%{transform:translate(0,0)}10%{transform:translate(-6px,3px)}30%{transform:translate(5px,-4px)}
+    50%{transform:translate(-4px,2px)}70%{transform:translate(3px,-2px)}}
+  .toastmsg{position:fixed;left:50%;top:16%;transform:translateX(-50%);background:rgba(10,16,36,.94);
+    border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:9px 14px;font-size:12.5px;z-index:70;
+    animation:toastin .25s ease, toastout .3s 1.5s forwards;}
+  @keyframes toastin{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+  @keyframes toastout{to{opacity:0;transform:translate(-50%,-8px)}}
+  /* 货币补充 */
+  .res{min-width:0;}
+  .res b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .res.dust b{color:#c9a2ff;}
+  .res.stam b{color:#7df0b0;}
+
+  /* 角色星级与属性面板 */
+  .tcard .stars{font-size:10.5px;color:var(--gold);letter-spacing:1px;margin-top:2px;}
+  .chd-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .chd-head .em{font-size:44px;filter:drop-shadow(0 0 14px rgba(92,225,255,.5));}
+  .chd-head .nm{font-size:17px;font-weight:800;display:flex;align-items:center;gap:6px;}
+  .chd-head .el{font-size:11px;color:var(--muted);margin-top:3px;}
+  .chd-stars{color:var(--gold);letter-spacing:3px;font-size:15px;margin-top:4px;}
+  .chd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .chd-cell{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:10.5px;color:var(--muted);}
+  .chd-cell b{display:block;color:var(--text);font-size:14px;margin-top:2px;}
+  .chd-skills{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+  .chd-skill{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:11px;color:var(--muted);line-height:1.5;}
+  .chd-skill b{color:var(--text);font-size:12px;}
+  .chd-note{font-size:11px;color:var(--muted);line-height:1.7;text-align:center;}
+
+  /* 商店 */
+  .shop-balance{text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px;}
+  .shop-balance b{color:#c9a2ff;font-size:16px;}
+  .shop-list{display:flex;flex-direction:column;gap:10px;}
+  .shop-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;padding:10px 11px;background:var(--panel);}
+  .shop-item .em{font-size:27px;}
+  .shop-item .info{flex:1;min-width:0;}
+  .shop-item .info b{display:block;font-size:13px;}
+  .shop-item .info span{font-size:10px;color:var(--muted);line-height:1.5;}
+  .shop-item button{padding:9px 11px;font-size:12px;white-space:nowrap;background:linear-gradient(180deg,#6b4ad8,#46309e);border-color:#bda6ff;}
+  .shop-tip{text-align:center;font-size:10.5px;color:var(--muted);line-height:1.8;margin-top:14px;}
+
+  /* 副本 */
+  .dun-stamina{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--muted);margin-bottom:12px;}
+  .dun-stamina b{color:#7df0b0;font-size:15px;}
+  .dun-list{display:flex;flex-direction:column;gap:10px;}
+  .dun-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel);}
+  .dun-card .top{display:flex;align-items:center;gap:10px;}
+  .dun-card .em{font-size:28px;filter:drop-shadow(0 0 10px rgba(255,255,255,.3));}
+  .dun-card h4{margin:0;font-size:14px;}
+  .dun-card .sub{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .dun-card .rw{font-size:10.5px;color:var(--gold);margin-top:7px;}
+  .dun-card .btns{display:flex;gap:8px;margin-top:9px;}
+  .dun-card .btns button{flex:1;padding:10px;font-size:12.5px;}
+  .dun-card .status{font-size:10px;color:var(--green);margin-top:6px;}
+  .modal-actions{flex-wrap:wrap;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 大厅 -->
+  <section class="screen active" id="screenLobby">
+    <div class="logo">星轨远征</div>
+    <div class="sub">顶层视角 · 回合制星海远征</div>
+    <div class="resources">
+      <div class="res"><span>✦ 星琼</span><b id="lobbyOrb">50</b></div>
+      <div class="res dust"><span>❖ 星辉</span><b id="lobbyDust">0</b></div>
+      <div class="res stam"><span>⚡ 体力</span><b id="lobbyStamina">300</b></div>
+    </div>
+    <div class="lobby-btns">
+      <button class="big primary" id="btnStartBattle">⚔ 开始战斗<small id="lobbyStageTag">第 1 关</small></button>
+      <div class="row">
+        <button class="big" id="btnGacha">🎴 抽卡</button>
+        <button class="big" id="btnTeam">👥 队伍</button>
+      </div>
+      <div class="row">
+        <button class="big" id="btnChars">🪪 角色</button>
+        <button class="big" id="btnShop">🛒 商店</button>
+      </div>
+      <button class="big" id="btnDungeon">🏯 材料副本<small id="lobbyStamTag">体力 300 / 300</small></button>
+    </div>
+    <div class="hint">最多上阵 4 名角色，敌方最多 6 名<br>每 5 关遭遇 BOSS；副本可获取大量升级材料</div>
+  </section>
+
+  <!-- 战斗 -->
+  <section class="screen" id="screenBattle">
+    <header class="btop">
+      <button class="ghost" id="btnQuit">←</button>
+      <div class="stage"><b id="bStage">第 1 关</b><span id="bRound">回合 1</span></div>
+      <div class="spwrap"><span>战技点</span><div class="pips" id="spPips"></div></div>
+      <div class="orb">✦<b id="bOrb">0</b></div>
+    </header>
+    <div class="order" id="orderStrip"></div>
+    <div class="field-wrap">
+      <div class="field" id="field">
+        <div class="side allies" id="alliesSide"></div>
+        <div class="side enemies" id="enemiesSide"></div>
+      </div>
+    </div>
+    <div class="blog" id="blog"></div>
+    <div class="skillbar">
+      <div class="auto-row">
+        <div class="activeInfo" id="activeInfo">等待行动…</div>
+        <button class="ghost" id="btnAuto">自动战斗：关</button>
+      </div>
+      <div class="skills">
+        <button id="btnBasic"><b>普通攻击</b><small id="lbBasic">战技点 +1</small></button>
+        <button id="btnSkill"><b>特殊攻击</b><small id="lbSkill">消耗 1 战技点</small></button>
+        <button id="btnUlt"><b>终结技</b><small id="lbUlt">需 100 能量</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 抽卡 -->
+  <section class="screen" id="screenGacha">
+    <div class="page-head">
+      <button class="ghost" id="btnGachaBack">←</button>
+      <h2>星海跃迁</h2>
+    </div>
+    <div class="gacha-banner">
+      <div class="big-orb">🌌</div>
+      <h3>群星跃迁</h3>
+      <p>每次跃迁都有机会获得新的远征队员<br>重复角色转化为 1 命座 + 5 星辉（满星 +20 星辉）</p>
+    </div>
+    <div class="rates"><span>S 级 <b>3%</b></span><span>A 级 <b>15%</b></span><span>B 级 <b>82%</b></span></div>
+    <div class="gacha-btns">
+      <button id="btnPull1">单次跃迁<small>1 抽卡券 / 5 星琼</small></button>
+      <button id="btnPull10">十连跃迁<small>10 抽卡券 / 45 星琼 · 必出 A</small></button>
+    </div>
+    <div class="pity" id="pityText"></div>
+  </section>
+
+  <!-- 队伍 -->
+  <section class="screen" id="screenTeam">
+    <div class="page-head">
+      <button class="ghost" id="btnTeamBack">←</button>
+      <h2>远征队伍</h2>
+    </div>
+    <div class="team-hint" id="teamHint"></div>
+    <div class="team-grid" id="teamGrid"></div>
+  </section>
+
+  <!-- 角色 -->
+  <section class="screen" id="screenChars">
+    <div class="page-head">
+      <button class="ghost" id="btnCharsBack">←</button>
+      <h2>角色图鉴</h2>
+    </div>
+    <div class="team-hint" id="charHint"></div>
+    <div class="team-grid" id="charGrid"></div>
+  </section>
+
+  <!-- 商店 -->
+  <section class="screen" id="screenShop">
+    <div class="page-head">
+      <button class="ghost" id="btnShopBack">←</button>
+      <h2>星际商店</h2>
+    </div>
+    <div class="shop-balance" id="shopBalance"></div>
+    <div class="shop-list" id="shopList"></div>
+    <div class="shop-tip">抽卡券：100 星琼 或 10 星辉 / 张，抽卡时优先消耗<br>升级材料：用星辉购买（重复角色 +5，满星重复 +20）<br>角色升级每级消耗 2 + 2×当前等级</div>
+  </section>
+
+  <!-- 副本 -->
+  <section class="screen" id="screenDungeon">
+    <div class="page-head">
+      <button class="ghost" id="btnDungeonBack">←</button>
+      <h2>材料副本</h2>
+    </div>
+    <div class="dun-stamina">⚡ 体力 <b id="dunStamina">300</b> / 300</div>
+    <div class="dun-list" id="dunList"></div>
+    <div class="shop-tip">副本战斗不推进主线关卡<br>首次通关后解锁扫荡，每次扫荡消耗 40 体力</div>
+  </section>
+</div>
+
+<div id="fx"></div>
+<div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s){ return document.querySelector(s); };
+  var SAVE = 'star-rail-rpg-v1';
+  var ELS = {物理:'#c9c9c9',火:'#ff6b4a',冰:'#7fdcff',雷:'#b58cff',风:'#7df0b0',岩:'#e0b072',水:'#6fb6ff',虚数:'#ffd166'};
+
+  var CHARS = [
+    {id:'xingqiong',name:'星穹',tier:'S',el:'虚数',emoji:'🧑‍🚀',hp:980,atk:128,def:38,spd:108,
+      basic:{name:'陨星击',mult:1,target:'single'},
+      skill:{name:'星轨裂变',mult:.75,target:'all'},
+      ult:{name:'银河坠落',mult:1.6,target:'all'}},
+    {id:'yanyu',name:'炎狱',tier:'S',el:'火',emoji:'🧙‍♀️',hp:900,atk:150,def:30,spd:100,
+      basic:{name:'灼刃',mult:1,target:'single'},
+      skill:{name:'烈焰穿刺',mult:1.8,target:'single'},
+      ult:{name:'焚天审判',mult:3.2,target:'single'}},
+    {id:'leiyin',name:'雷音',tier:'S',el:'雷',emoji:'🥷',hp:880,atk:140,def:32,spd:112,
+      basic:{name:'雷切',mult:1,target:'single'},
+      skill:{name:'万雷闪',mult:1,target:'threeRandom'},
+      ult:{name:'雷狱天罚',mult:1.35,target:'all'}},
+    {id:'shuanghua',name:'霜华',tier:'A',el:'冰',emoji:'🧝‍♀️',hp:820,atk:118,def:34,spd:96,
+      basic:{name:'冰锥',mult:1,target:'single'},
+      skill:{name:'霜刃斩',mult:1.7,target:'single'},
+      ult:{name:'极寒领域',mult:2.9,target:'single'}},
+    {id:'fengxing',name:'风行',tier:'A',el:'风',emoji:'🧑‍🎤',hp:780,atk:104,def:30,spd:120,
+      basic:{name:'疾风踢',mult:1,target:'single'},
+      skill:{name:'回旋风暴',mult:1.1,target:'two'},
+      ult:{name:'飓风圆舞',mult:1.2,target:'all'}},
+    {id:'panyue',name:'磐岳',tier:'A',el:'岩',emoji:'🦸',hp:1200,atk:82,def:55,spd:88,
+      basic:{name:'岩拳',mult:1,target:'single'},
+      skill:{name:'壁垒强袭',mult:1.2,target:'single',taunt:true},
+      ult:{name:'山崩',mult:1,target:'all'}},
+    {id:'qingyi',name:'清漪',tier:'A',el:'水',emoji:'🧜‍♀️',hp:760,atk:95,def:30,spd:104,
+      basic:{name:'水弹',mult:1,target:'single'},
+      skill:{name:'流水回春',mult:1.8,target:'heal'},
+      ult:{name:'潮汐治愈',mult:1.2,target:'healAll'}},
+    {id:'xuetu',name:'学徒',tier:'B',el:'物理',emoji:'🧑‍🔬',hp:650,atk:80,def:24,spd:92,
+      basic:{name:'短杖敲击',mult:1,target:'single'},
+      skill:{name:'奥术冲击',mult:1.5,target:'single'},
+      ult:{name:'小型爆裂',mult:2.2,target:'single'}},
+    {id:'gongshou',name:'弓手',tier:'B',el:'物理',emoji:'🧑‍🌾',hp:620,atk:88,def:22,spd:100,
+      basic:{name:'射击',mult:1,target:'single'},
+      skill:{name:'穿透箭',mult:1.6,target:'single'},
+      ult:{name:'箭雨',mult:.9,target:'threeRandom'}},
+    {id:'youxia',name:'游侠',tier:'B',el:'风',emoji:'🥾',hp:640,atk:84,def:26,spd:106,
+      basic:{name:'短刀突刺',mult:1,target:'single'},
+      skill:{name:'疾影斩',mult:1.5,target:'single'},
+      ult:{name:'风之绝影',mult:2.3,target:'single'}},
+    {id:'yizhe',name:'医者',tier:'B',el:'水',emoji:'👨‍⚕️',hp:610,atk:70,def:22,spd:94,
+      basic:{name:'药杵敲击',mult:1,target:'single'},
+      skill:{name:'应急治疗',mult:1.6,target:'heal'},
+      ult:{name:'群体包扎',mult:.9,target:'healAll'}},
+    {id:'tiewei',name:'铁卫',tier:'B',el:'岩',emoji:'👮',hp:900,atk:62,def:42,spd:84,
+      basic:{name:'盾击',mult:1,target:'single'},
+      skill:{name:'铁壁反击',mult:1,target:'single',taunt:true},
+      ult:{name:'壁垒冲撞',mult:.8,target:'all'}}
+  ];
+  var BYID = {};
+  CHARS.forEach(function(c){ BYID[c.id] = c; });
+  var ENEMIES = [
+    {name:'狼兵',emoji:'🐺',el:'物理'},{name:'野猪',emoji:'🐗',el:'岩'},
+    {name:'毒蛛',emoji:'🕷️',el:'雷'},{name:'蜥蜴人',emoji:'🦎',el:'风'},
+    {name:'骷髅兵',emoji:'💀',el:'物理'},{name:'幽灵',emoji:'👻',el:'冰'},
+    {name:'石卫',emoji:'🗿',el:'岩'},{name:'鳄鱼',emoji:'🐊',el:'水'},
+    {name:'恶魔',emoji:'👹',el:'火'}
+  ];
+
+  // ---------- 存档 ----------
+  function freshState(){
+    return {
+      orb:50, stage:1, pity:0, pulls:0,
+      dust:0, tickets:0, mats:0,
+      stamina:300, staminaTs:Date.now(),
+      dungeonClear:{},
+      owned:{
+        xuetu:{level:1,stars:0,cons:0},
+        gongshou:{level:1,stars:0,cons:0},
+        yizhe:{level:1,stars:0,cons:0},
+        tiewei:{level:1,stars:0,cons:0}
+      },
+      team:['xuetu','gongshou','yizhe','tiewei']
+    };
+  }
+  var state = freshState();
+  try{
+    var raw = localStorage.getItem(SAVE);
+    if(raw){
+      var d = JSON.parse(raw);
+      if(d && d.owned && d.team && typeof d.orb === 'number'){
+        state = d;
+        if(!state.team.length) state.team = ['xuetu'];
+      }
+    }
+  }catch(e){}
+  normalizeState();
+  function normalizeState(){
+    if(typeof state.dust !== 'number' || isNaN(state.dust)) state.dust = 0;
+    if(typeof state.tickets !== 'number' || isNaN(state.tickets)) state.tickets = 0;
+    if(typeof state.mats !== 'number' || isNaN(state.mats)) state.mats = 0;
+    if(typeof state.stamina !== 'number' || isNaN(state.stamina)) state.stamina = 300;
+    if(typeof state.staminaTs !== 'number') state.staminaTs = Date.now();
+    if(!state.dungeonClear || typeof state.dungeonClear !== 'object') state.dungeonClear = {};
+    Object.keys(state.owned || {}).forEach(function(id){
+      var r = state.owned[id];
+      if(!r) return;
+      if(typeof r.level !== 'number' || r.level < 1) r.level = 1;
+      if(r.level > 20) r.level = 20;
+      if(typeof r.stars !== 'number' || isNaN(r.stars)) r.stars = 0;
+      if(r.stars > 5) r.stars = 5;
+      if(typeof r.cons !== 'number' || isNaN(r.cons)) r.cons = 0;
+      delete r.exp;
+    });
+    state.stamina = Math.max(0, Math.min(300, state.stamina));
+  }
+  function save(){
+    try{ localStorage.setItem(SAVE, JSON.stringify(state)); }catch(e){}
+  }
+
+  // ---------- 体力 ----------
+  var lastStam = -1;
+  function syncStamina(){
+    var now = Date.now();
+    if(!state.staminaTs) state.staminaTs = now;
+    var elapsed = now - state.staminaTs;
+    if(elapsed > 0){
+      state.stamina = Math.min(300, state.stamina + elapsed / 6000);
+      state.staminaTs = now;
+    }
+  }
+  function staminaInt(){ return Math.floor(state.stamina); }
+  function renderStamina(){
+    $('#lobbyStamina').textContent = staminaInt();
+    $('#lobbyStamTag').textContent = '体力 ' + staminaInt() + ' / 300';
+    var ds = $('#dunStamina'); if(ds) ds.textContent = staminaInt();
+  }
+  function staminaTick(){
+    syncStamina();
+    renderStamina();
+    var nowInt = staminaInt();
+    if(nowInt !== lastStam){ lastStam = nowInt; save(); }
+  }
+
+  // ---------- 通用 ----------
+  var B = null;
+  var fx = $('#fx');
+  var timer = null;
+  function starsStr(n){
+    var s = '';
+    for(var i = 0; i < 5; i++) s += i < n ? '★' : '☆';
+    return s;
+  }
+  function statsOf(id){
+    var rec = state.owned[id], c = BYID[id];
+    var m = (1 + 0.1 * (rec.level - 1)) * (1 + 0.1 * (rec.stars || 0));
+    return {hp:Math.round(c.hp*m), atk:Math.round(c.atk*m), def:Math.round(c.def*m), spd:c.spd};
+  }
+  function showScreen(name){
+    ['Lobby','Battle','Gacha','Team','Chars','Shop','Dungeon'].forEach(function(n){
+      $('#screen' + n).classList.toggle('active', n === name);
+    });
+  }
+  function toast(msg){
+    var t = document.createElement('div');
+    t.className = 'toastmsg'; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 1900);
+  }
+  function log(text, cls){
+    var box = $('#blog'), p = document.createElement('p');
+    p.textContent = text; if(cls) p.className = cls;
+    box.appendChild(p);
+    while(box.children.length > 3) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  }
+  function rand(a, b){ return a + Math.random() * (b - a); }
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  // ---------- 大厅 ----------
+  function renderLobby(){
+    $('#lobbyOrb').textContent = state.orb;
+    $('#lobbyDust').textContent = state.dust;
+    $('#lobbyStageTag').textContent = '第 ' + state.stage + ' 关' + (state.stage % 5 === 0 ? ' · BOSS' : '');
+    renderStamina();
+  }
+
+  // ---------- 队伍 ----------
+  function renderTeam(){
+    var grid = $('#teamGrid');
+    $('#teamHint').textContent = '已上阵 ' + state.team.length + ' / 4 · 点击卡片上阵或下阵';
+    var ids = CHARS.filter(function(c){ return state.owned[c.id]; })
+                   .sort(function(a, b){
+                     var o = {S:0, A:1, B:2};
+                     return o[a.tier] - o[b.tier];
+                   });
+    grid.innerHTML = ids.map(function(c){
+      var rec = state.owned[c.id], st = statsOf(c.id);
+      var on = state.team.indexOf(c.id) >= 0;
+      return '<div class="tcard ' + (on ? 'on' : '') + '" data-id="' + c.id + '">' +
+        '<div class="badge">' + (on ? '已上阵' : '待命') + '</div>' +
+        '<div class="top">' +
+          '<div class="em" style="--el:' + ELS[c.el] + '">' + c.emoji + '</div>' +
+          '<div class="meta"><div class="nm">' + c.name + '<span class="tier ' + c.tier + '">' + c.tier + '</span></div>' +
+          '<div class="el">' + c.el + ' · Lv.' + rec.level + '</div>' +
+          '<div class="stars">' + starsStr(rec.stars) + '</div></div>' +
+        '</div>' +
+        '<div class="st">生命 ' + st.hp + ' · 攻击 ' + st.atk + '<br>防御 ' + st.def + ' · 速度 ' + st.spd + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function toggleTeam(id){
+    var i = state.team.indexOf(id);
+    if(i >= 0){
+      if(state.team.length <= 1){ toast('至少保留一名角色'); return; }
+      state.team.splice(i, 1);
+    }else{
+      if(state.team.length >= 4){ toast('最多上阵 4 名角色'); return; }
+      state.team.push(id);
+    }
+    save(); renderTeam(); renderLobby();
+  }
+
+  // ---------- 角色图鉴 ----------
+  function renderChars(){
+    var grid = $('#charGrid');
+    var ids = CHARS.filter(function(c){ return state.owned[c.id]; })
+                   .sort(function(a, b){
+                     var o = {S:0, A:1, B:2};
+                     return o[a.tier] - o[b.tier];
+                   });
+    $('#charHint').textContent = '已拥有 ' + ids.length + ' 名角色 · 点击卡片查看属性面板';
+    grid.innerHTML = ids.map(function(c){
+      var rec = state.owned[c.id], st = statsOf(c.id);
+      return '<div class="tcard" data-id="' + c.id + '">' +
+        '<div class="badge">命座 ' + rec.cons + '</div>' +
+        '<div class="top">' +
+          '<div class="em" style="--el:' + ELS[c.el] + '">' + c.emoji + '</div>' +
+          '<div class="meta"><div class="nm">' + c.name + '<span class="tier ' + c.tier + '">' + c.tier + '</span></div>' +
+          '<div class="el">' + c.el + ' · Lv.' + rec.level + '</div>' +
+          '<div class="stars">' + starsStr(rec.stars) + '</div></div>' +
+        '</div>' +
+        '<div class="st">生命 ' + st.hp + ' · 攻击 ' + st.atk + '<br>防御 ' + st.def + ' · 速度 ' + st.spd + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function skillScope(s){
+    var map = {single:'单体', all:'全体敌人', two:'两名敌人', threeRandom:'随机三名敌人',
+      heal:'治疗血量最低的队友', healAll:'治疗全体队友'};
+    return map[s.target] || '';
+  }
+  function openCharPanel(id){
+    var rec = state.owned[id], c = BYID[id], st = statsOf(id);
+    var cost = 2 + 2 * rec.level;
+    var html = '<div class="chd-head"><div class="em">' + c.emoji + '</div>' +
+      '<div><div class="nm">' + c.name + '<span class="tier ' + c.tier + '">' + c.tier + '</span></div>' +
+      '<div class="el">' + c.el + ' · Lv.' + rec.level + (rec.level >= 20 ? '（满级）' : '') + '</div>' +
+      '<div class="chd-stars">' + starsStr(rec.stars) +
+      ' <span style="font-size:10px;color:var(--muted)">命座 ' + rec.cons + '</span></div></div></div>' +
+      '<div class="chd-grid">' +
+        '<div class="chd-cell">生命<b>' + st.hp + '</b></div>' +
+        '<div class="chd-cell">攻击<b>' + st.atk + '</b></div>' +
+        '<div class="chd-cell">防御<b>' + st.def + '</b></div>' +
+        '<div class="chd-cell">速度<b>' + st.spd + '</b></div>' +
+      '</div>' +
+      '<div class="chd-skills">' +
+        '<div class="chd-skill"><b>普通攻击 · ' + c.basic.name + '</b>' + skillScope(c.basic) + ' · 战技点 +1、能量 +25</div>' +
+        '<div class="chd-skill"><b>特殊攻击 · ' + c.skill.name + '</b>' + skillScope(c.skill) + ' · 消耗 1 战技点</div>' +
+        '<div class="chd-skill"><b>终结技 · ' + c.ult.name + '</b>' + skillScope(c.ult) + ' · 需 100 能量</div>' +
+      '</div>' +
+      '<div class="chd-note">升级材料 ' + state.mats + ' · 每星 +10% 生命/攻击/防御' +
+      (rec.stars < 5 ? ' · 每 1 命座可升 1 星（最高 5 星）' : ' · 已满 5 星，重复获得转 20 星辉') + '</div>';
+    var acts = [];
+    if(rec.level < 20){
+      acts.push({label:'升级 Lv.' + rec.level + '→' + (rec.level + 1) + '（' + cost + ' 材料）',
+        cls:'primary', fn:function(){ levelUp(id); }});
+    }
+    if(rec.stars < 5 && rec.cons > 0){
+      acts.push({label:'升星（消耗 1 命座）', fn:function(){ starUp(id); }});
+    }
+    acts.push({label:'关闭', fn:closeModal});
+    showModal(html, acts);
+  }
+  function levelUp(id){
+    var rec = state.owned[id];
+    if(rec.level >= 20){ toast('已达 20 级上限'); return; }
+    var cost = 2 + 2 * rec.level;
+    if(state.mats < cost){ toast('升级材料不足，需要 ' + cost + ' 材料'); return; }
+    state.mats -= cost; rec.level++;
+    save(); renderChars(); renderLobby();
+    openCharPanel(id);
+  }
+  function starUp(id){
+    var rec = state.owned[id];
+    if(rec.stars >= 5){ toast('该角色已满 5 星'); return; }
+    if(rec.cons <= 0){ toast('命座不足，抽到重复角色可获得命座'); return; }
+    rec.cons--; rec.stars++;
+    save(); renderChars(); renderTeam();
+    openCharPanel(id);
+    toast('升星成功：' + rec.stars + ' 星');
+  }
+
+  // ---------- 商店 ----------
+  var SHOP = [
+    {id:'ticket', emoji:'🎫', name:'抽卡券 ×1（星琼）', desc:'跃迁时优先消耗', price:100, cur:'orb',
+      give:function(){ state.tickets += 1; }},
+    {id:'ticketDust', emoji:'🎟️', name:'抽卡券 ×1（星辉）', desc:'10 星辉兑换一张', price:10, cur:'dust',
+      give:function(){ state.tickets += 1; }},
+    {id:'mats10', emoji:'📦', name:'升级材料 ×10', desc:'角色升级消耗 · 20 星辉', price:20, cur:'dust',
+      give:function(){ state.mats += 10; }},
+    {id:'mats30', emoji:'🎁', name:'升级材料 ×30', desc:'比单买更划算 · 50 星辉', price:50, cur:'dust',
+      give:function(){ state.mats += 30; }}
+  ];
+  function renderShop(){
+    $('#shopBalance').innerHTML = '✦ 星琼 <b style="color:#ffd166">' + state.orb + '</b> · ❖ 星辉 <b>' + state.dust + '</b>';
+    $('#shopList').innerHTML = SHOP.map(function(it){
+      var have = it.cur === 'orb' ? state.orb : state.dust;
+      var can = have >= it.price;
+      return '<div class="shop-item"><div class="em">' + it.emoji + '</div>' +
+        '<div class="info"><b>' + it.name + '</b><span>' + it.desc + '</span></div>' +
+        '<button data-shop="' + it.id + '"' + (can ? '' : ' disabled') + '>' +
+          it.price + ' ' + (it.cur === 'orb' ? '星琼' : '星辉') + '</button></div>';
+    }).join('');
+  }
+  function buy(id){
+    var it = SHOP.filter(function(x){ return x.id === id; })[0];
+    if(!it) return;
+    var have = it.cur === 'orb' ? state.orb : state.dust;
+    if(have < it.price){ toast((it.cur === 'orb' ? '星琼' : '星辉') + '不足'); return; }
+    if(it.cur === 'orb') state.orb -= it.price;
+    else state.dust -= it.price;
+    it.give();
+    save(); renderShop(); renderLobby();
+    toast('购买成功：' + it.name);
+  }
+
+  // ---------- 副本 ----------
+  var DUNGEONS = [
+    {id:'d1', name:'材料副本 · 简单', emoji:'🌿', count:4, boss:false,
+      hpB:620, atkB:58, defB:10, mats:18, orb:8, desc:'4 名敌人 · 推荐 1~2 级角色'},
+    {id:'d2', name:'材料副本 · 困难', emoji:'🔥', count:6, boss:false,
+      hpB:1000, atkB:88, defB:16, mats:36, orb:18, desc:'6 名敌人 · 推荐 5 级以上'},
+    {id:'d3', name:'材料副本 · 噩梦', emoji:'👹', count:6, boss:true,
+      hpB:1500, atkB:120, defB:24, mats:60, orb:30, desc:'6 名敌人含 BOSS · 高难挑战'}
+  ];
+  function renderDungeon(){
+    syncStamina(); renderStamina();
+    $('#dunList').innerHTML = DUNGEONS.map(function(d){
+      var cleared = !!state.dungeonClear[d.id];
+      var canSweep = cleared && staminaInt() >= 40;
+      return '<div class="dun-card">' +
+        '<div class="top"><div class="em">' + d.emoji + '</div>' +
+        '<div><h4>' + d.name + '</h4><div class="sub">' + d.desc + '</div></div></div>' +
+        '<div class="rw">奖励：' + d.mats + ' 升级材料 · ' + d.orb + ' 星琼</div>' +
+        (cleared ? '<div class="status">已通关 · 扫荡已解锁</div>'
+                 : '<div class="status" style="color:var(--muted)">未通关 · 通关后解锁扫荡</div>') +
+        '<div class="btns">' +
+          '<button class="primary" data-diff="' + d.id + '" data-act="fight">挑战</button>' +
+          '<button data-diff="' + d.id + '" data-act="sweep"' + (canSweep ? '' : ' disabled') + '>' +
+            '扫荡<small>' + (cleared ? '40 体力' : '需先通关') + '</small></button>' +
+        '</div></div>';
+    }).join('');
+  }
+  function sweep(d){
+    syncStamina();
+    if(!state.dungeonClear[d.id]){ toast('需先通关该副本'); return; }
+    if(staminaInt() < 40){ toast('体力不足，扫荡需要 40 体力'); return; }
+    state.stamina = Math.max(0, state.stamina - 40);
+    state.mats += d.mats;
+    save(); renderLobby(); renderDungeon();
+    toast('扫荡完成：+' + d.mats + ' 升级材料');
+  }
+
+  // ---------- 抽卡 ----------
+  function renderGacha(){
+    $('#pityText').innerHTML = '抽卡券 <b style="color:#ffd166">' + state.tickets + '</b> 张 · 已累计跃迁 ' +
+      state.pulls + ' 次 · 距 S 级保底还需 ' + Math.max(0, 80 - state.pity) + ' 次';
+  }
+  function pull(n){
+    var needTickets = n === 1 ? 1 : 10;
+    var orbCost = n === 1 ? 5 : 45;
+    var useTickets = state.tickets >= needTickets;
+    if(!useTickets && state.orb < orbCost){ toast('抽卡券不足，星琼也不够'); return; }
+    if(useTickets) state.tickets -= needTickets;
+    else state.orb -= orbCost;
+
+    var tiers = [];
+    for(var i = 0; i < n; i++){
+      state.pity++;
+      var r = Math.random();
+      var tier = r < 0.03 ? 'S' : r < 0.18 ? 'A' : 'B';
+      if(state.pity >= 80) tier = 'S';
+      if(tier === 'S') state.pity = 0;
+      tiers.push(tier);
+    }
+    if(n === 10 && !tiers.some(function(t){ return t !== 'B'; })) tiers[9] = 'A';
+
+    var results = [];
+    tiers.forEach(function(tier){
+      var pool = CHARS.filter(function(c){ return c.tier === tier; });
+      var c = pool[Math.floor(Math.random() * pool.length)];
+      var rec = state.owned[c.id];
+      var dup = !!rec;
+      var full = dup && rec.stars >= 5;
+      if(dup){
+        if(full){ state.dust += 20; }
+        else { rec.cons += 1; state.dust += 5; }
+      }else{
+        state.owned[c.id] = {level:1, stars:0, cons:0};
+      }
+      results.push({c:c, tier:tier, dup:dup, full:full});
+      state.pulls++;
+    });
+    save(); renderLobby(); renderGacha();
+
+    var cards = results.map(function(r, i){
+      var tag = r.full ? ' · 满星 +20 星辉' : r.dup ? ' · 命座+1 · 星辉+5' : ' · NEW';
+      return '<div class="pull-card ' + r.tier + '" style="animation-delay:' + (i * 0.07) + 's">' +
+        '<div class="em">' + r.c.emoji + '</div>' +
+        '<div class="nm">' + r.c.name + '</div>' +
+        '<div class="t">' + r.tier + tag + '</div>' +
+      '</div>';
+    }).join('');
+    showModal('<h3>跃迁结果</h3><div class="card-grid">' + cards + '</div>',
+      [{label:'确定', cls:'primary', fn:closeModal}]);
+  }
+
+  // ---------- 弹窗 ----------
+  function showModal(html, actions){
+    var box = $('#modalBox');
+    box.innerHTML = html + '<div class="modal-actions"></div>';
+    var bar = box.querySelector('.modal-actions');
+    (actions || []).forEach(function(a){
+      var b = document.createElement('button');
+      b.textContent = a.label; if(a.cls) b.className = a.cls;
+      b.addEventListener('click', a.fn);
+      bar.appendChild(b);
+    });
+    $('#modal').classList.add('show');
+  }
+  function closeModal(){ $('#modal').classList.remove('show'); }
+
+  // ---------- 战斗 ----------
+  function makeEnemies(stage){
+    var count = Math.min(6, 1 + stage);
+    var boss = stage % 5 === 0;
+    var hpB = 260 + stage * 140, atkB = 55 + stage * 20, defB = 10 + stage * 4;
+    var arr = [];
+    for(var i = 0; i < count; i++){
+      var t = ENEMIES[i % ENEMIES.length];
+      var isBoss = boss && i === 0;
+      var hp = Math.round(hpB * (isBoss ? 1.8 : 1) * (0.9 + 0.05 * i));
+      arr.push({
+        key:'e' + i, side:'enemy',
+        name:(isBoss ? '★' : '') + t.name,
+        emoji:isBoss ? '👹' : t.emoji, el:t.el,
+        hp:hp, maxHp:hp,
+        atk:Math.round(atkB * (isBoss ? 1.3 : 1)),
+        def:defB, spd:80 + ((i * 7) % 31),
+        alive:true, boss:isBoss, reduce:0
+      });
+    }
+    return arr;
+  }
+  function makeDungeonEnemies(d){
+    var arr = [];
+    for(var i = 0; i < d.count; i++){
+      var t = ENEMIES[i % ENEMIES.length];
+      var isBoss = d.boss && i === 0;
+      var hp = Math.round(d.hpB * (isBoss ? 1.9 : 1) * (0.92 + 0.04 * i));
+      arr.push({
+        key:'e' + i, side:'enemy',
+        name:(isBoss ? '★' : '') + t.name,
+        emoji:isBoss ? '👹' : t.emoji, el:t.el,
+        hp:hp, maxHp:hp,
+        atk:Math.round(d.atkB * (isBoss ? 1.3 : 1)),
+        def:d.defB, spd:80 + ((i * 7) % 31),
+        alive:true, boss:isBoss, reduce:0
+      });
+    }
+    return arr;
+  }
+  function makeAllies(){
+    return state.team.map(function(id, i){
+      var st = statsOf(id), c = BYID[id];
+      return {key:'a' + i, side:'ally', id:id, name:c.name, emoji:c.emoji, tier:c.tier, el:c.el,
+        hp:st.hp, maxHp:st.hp, atk:st.atk, def:st.def, spd:st.spd, energy:0, alive:true, reduce:0};
+    });
+  }
+
+  function startBattle(){
+    B = {mode:'stage', allies:makeAllies(), enemies:makeEnemies(state.stage), round:0, sp:3, idx:-1,
+         order:[], active:null, activeSide:null, selected:null, busy:true, over:false, taunt:null};
+    B.selected = B.enemies[0] ? B.enemies[0].key : null;
+    $('#bStage').textContent = '第 ' + state.stage + ' 关' + (state.stage % 5 === 0 ? ' · BOSS' : '');
+    $('#bOrb').textContent = state.orb;
+    $('#blog').innerHTML = '';
+    log('战斗开始' + (state.stage % 5 === 0 ? '：BOSS 现身！' : '：敌人出现了'), 'sys');
+    showScreen('Battle');
+    renderBattle();
+    startRound();
+  }
+  function startDungeon(d){
+    B = {mode:'dungeon', diff:d, allies:makeAllies(), enemies:makeDungeonEnemies(d), round:0, sp:3, idx:-1,
+         order:[], active:null, activeSide:null, selected:null, busy:true, over:false, taunt:null};
+    B.selected = B.enemies[0] ? B.enemies[0].key : null;
+    $('#bStage').textContent = d.name;
+    $('#bOrb').textContent = state.orb;
+    $('#blog').innerHTML = '';
+    log('副本战斗开始：' + d.name, 'sys');
+    showScreen('Battle');
+    renderBattle();
+    startRound();
+  }
+
+  function startRound(){
+    if(!B || B.over) return;
+    B.round++;
+    B.taunt = null;
+    B.allies.forEach(function(a){ a.reduce = 0; });
+    B.order = B.allies.concat(B.enemies)
+      .filter(function(u){ return u.alive; })
+      .sort(function(x, y){ return y.spd - x.spd || (x.side === 'ally' ? -1 : 1); });
+    B.idx = -1;
+    $('#bRound').textContent = '回合 ' + B.round;
+    log('第 ' + B.round + ' 回合', 'sys');
+    renderBattle();
+    nextActor();
+  }
+
+  function nextActor(){
+    if(!B || B.over) return;
+    B.idx++;
+    while(B.idx < B.order.length && !B.order[B.idx].alive) B.idx++;
+    if(B.idx >= B.order.length){ startRound(); return; }
+
+    var u = B.order[B.idx];
+    B.active = u;
+    B.activeSide = u.side;
+    if(u.side === 'enemy'){
+      B.busy = true;
+      renderBattle();
+      setTimeout(function(){ enemyAct(u); }, 620);
+    }else{
+      B.busy = false;
+      renderBattle();
+      log(u.name + ' 可以行动了', 'ally');
+      if(autoOn) setTimeout(autoAct, 650);
+    }
+  }
+
+  var autoOn = false;
+  function toggleAuto(){
+    autoOn = !autoOn;
+    var b = $('#btnAuto');
+    b.textContent = '自动战斗：' + (autoOn ? '开' : '关');
+    b.classList.toggle('on', autoOn);
+    if(autoOn && B && !B.over && !B.busy && B.active && B.active.side === 'ally') setTimeout(autoAct, 300);
+  }
+  function autoAct(){
+    if(!autoOn || !B || B.over || B.busy || B.ulting) return;
+    var a = B.active;
+    if(!a || a.side !== 'ally' || !a.alive) return;
+    if(a.energy >= 100) act('ult');
+    else if(B.sp > 0) act('skill');
+    else act('basic');
+  }
+
+  function unitEl(key){
+    return $('[data-key="' + key + '"]');
+  }
+  function rectOf(key){
+    var el = unitEl(key);
+    if(!el) return null;
+    var r = el.getBoundingClientRect();
+    return {left:r.left, top:r.top, width:r.width, height:r.height, cx:r.left + r.width / 2, cy:r.top + r.height / 2};
+  }
+  function renderBattle(){
+    if(!B) return;
+    $('#alliesSide').innerHTML = B.allies.map(function(a){
+      return '<div class="unit ally ' + (a.alive ? '' : 'dead') + ' ' +
+        (B.active === a ? 'active' : '') + ' ' + (B.taunt === a.key ? 'taunt' : '') +
+        '" data-key="' + a.key + '">' +
+        '<div class="avatar" style="--el:' + ELS[a.el] + '">' + a.emoji +
+          '<span class="tier ' + a.tier + '">' + a.tier + '</span></div>' +
+        '<div class="uname">' + a.name + '</div>' +
+        '<div class="bar hp"><i style="width:' + (a.hp / a.maxHp * 100) + '%"></i></div>' +
+        '<div class="bar en"><i style="width:' + a.energy + '%"></i></div>' +
+      '</div>';
+    }).join('');
+
+    $('#enemiesSide').innerHTML = B.enemies.map(function(e){
+      return '<div class="unit enemy ' + (e.alive ? '' : 'dead') + ' ' +
+        (B.selected === e.key && e.alive ? 'sel' : '') + '" data-key="' + e.key + '">' +
+        '<div class="avatar" style="--el:' + ELS[e.el] + '">' + e.emoji + '</div>' +
+        '<div class="uname">' + e.name + '</div>' +
+        '<div class="bar hp"><i style="width:' + (e.hp / e.maxHp * 100) + '%"></i></div>' +
+      '</div>';
+    }).join('');
+
+    var pips = '';
+    for(var i = 0; i < 5; i++) pips += '<div class="pip ' + (i < B.sp ? 'on' : '') + '"></div>';
+    $('#spPips').innerHTML = pips;
+
+    var strip = '';
+    for(var j = 0; j < B.order.length; j++){
+      var u = B.order[j];
+      if(!u || !u.alive) continue;
+      if(j < B.idx) continue;
+      strip += '<div class="ord ' + u.side + (j === B.idx ? ' now' : '') + '">' + u.emoji + '</div>';
+    }
+    $('#orderStrip').innerHTML = strip;
+
+    var a = B.active;
+    if(a){
+      if(a.side === 'ally'){
+        $('#activeInfo').innerHTML = '当前行动：<b>' + a.name + '</b> · ' + a.el +
+          ' · 能量 ' + a.energy + '/100';
+      }else{
+        $('#activeInfo').innerHTML = '<b>' + a.name + '</b> 正在行动…';
+      }
+    }else{
+      $('#activeInfo').textContent = '等待行动…';
+    }
+    $('#bOrb').textContent = state.orb;
+    updateSkills();
+  }
+
+  function updateSkills(){
+    var a = B && B.active && B.active.side === 'ally' ? B.active : null;
+    var acting = B && B.busy && a;
+    var lock = !B || B.over || B.busy || B.ulting || !a;
+    $('#btnBasic').disabled = lock;
+    $('#btnSkill').disabled = lock || B.sp <= 0;
+
+    var ready = B && !B.over ? B.allies.filter(function(x){ return x.alive && x.energy >= 100; }) : [];
+    var cand = a && a.energy >= 100 ? a : ready[0];
+    $('#btnUlt').disabled = !B || B.over || B.ulting || acting || !ready.length;
+    if(cand){
+      var c = BYID[cand.id];
+      $('#lbUlt').textContent = cand.name + ' · ' + c.ult.name + ' 就绪';
+    }else{
+      $('#lbUlt').textContent = '需 100 能量';
+    }
+    if(a){
+      var c2 = BYID[a.id];
+      $('#lbBasic').textContent = c2.basic.name + ' · 战技点+1';
+      $('#lbSkill').textContent = c2.skill.name + ' · 消耗1点';
+    }
+  }
+
+  function ultClick(){
+    if(!B || B.over || B.ulting) return;
+    var a = B.active;
+    var ready = B.allies.filter(function(x){ return x.alive && x.energy >= 100; });
+    var cand = a && a.side === 'ally' && a.energy >= 100 ? a : ready[0];
+    if(!cand) return;
+    if(cand === a){ act('ult'); return; }
+    castUlt(cand);
+  }
+
+  // 非我方回合也能释放的终结技：不消耗当前行动
+  function castUlt(u){
+    if(!B || B.over || B.ulting) return;
+    B.ulting = true;
+    updateSkills();
+    var c = BYID[u.id], s = c.ult;
+    u.energy = 0;
+    log(u.name + ' 释放终结技「' + s.name + '」', 'ally');
+    ultLayer(u, ELS[u.el], s.name);
+    applySkill(u, s, 'ult');
+    renderBattle();
+    setTimeout(function(){
+      if(!B) return;
+      B.ulting = false;
+      if(checkEnd()) return;
+      renderBattle();
+      updateSkills();
+    }, 1250);
+  }
+
+  function targetEnemy(){
+    var t = B.enemies.filter(function(e){ return e.key === B.selected && e.alive; })[0];
+    return t || B.enemies.filter(function(e){ return e.alive; })[0] || null;
+  }
+
+  function calcDamage(atk, def, mult){
+    var base = atk * mult * 100 / (100 + def);
+    var crit = Math.random() < 0.1;
+    var dmg = base * rand(0.92, 1.08) * (crit ? 1.5 : 1);
+    return {dmg:Math.max(1, Math.round(dmg)), crit:crit};
+  }
+
+  function floatAt(rect, text, cls, delay){
+    if(!rect) return;
+    setTimeout(function(){
+      var d = document.createElement('div');
+      d.className = 'fnum ' + (cls || '');
+      d.textContent = text;
+      d.style.left = rect.cx + 'px';
+      d.style.top = (rect.cy - 6) + 'px';
+      fx.appendChild(d);
+      setTimeout(function(){ d.remove(); }, 900);
+    }, delay || 0);
+  }
+  function slashAt(rect, delay){
+    if(!rect) return;
+    setTimeout(function(){
+      var s = document.createElement('div');
+      s.className = 'slash';
+      s.style.left = rect.cx + 'px';
+      s.style.top = rect.cy + 'px';
+      fx.appendChild(s);
+      setTimeout(function(){ s.remove(); }, 420);
+    }, delay || 0);
+  }
+  function ringAt(rect, color, delay){
+    if(!rect) return;
+    setTimeout(function(){
+      var r = document.createElement('div');
+      r.className = 'ring';
+      r.style.left = rect.cx + 'px';
+      r.style.top = rect.cy + 'px';
+      r.style.setProperty('--rc', color || '#5ce1ff');
+      fx.appendChild(r);
+      setTimeout(function(){ r.remove(); }, 650);
+    }, delay || 0);
+  }
+  function shakeAt(key, delay){
+    setTimeout(function(){
+      var el = unitEl(key);
+      if(!el) return;
+      el.classList.add('hit');
+      setTimeout(function(){ el.classList.remove('hit'); }, 320);
+    }, delay || 0);
+  }
+  function ultLayer(actor, color, title){
+    var layer = document.createElement('div');
+    layer.className = 'ultlayer';
+    layer.style.setProperty('--uc', color);
+    layer.innerHTML = '<div style="text-align:center"><div class="caster" style="--uc:' + color + '">' +
+      actor.emoji + '</div><div class="uname2">' + (title || actor.name) + '</div></div>';
+    document.body.appendChild(layer);
+    setTimeout(function(){ layer.remove(); }, 700);
+  }
+
+  function healAllOrOne(actor, s){
+    var targets = s.target === 'heal' ? [lowestAlly()] : B.allies.filter(function(x){ return x.alive; });
+    var rects = targets.map(function(t){ return rectOf(t.key); });
+    var results = [];
+    targets.forEach(function(t){
+      var heal = Math.round(actor.atk * s.mult * rand(0.95, 1.05));
+      var real = Math.min(heal, t.maxHp - t.hp);
+      t.hp += real;
+      results.push(real);
+      log(actor.name + ' 治疗 ' + t.name + ' ' + real + ' 点生命', 'ally');
+    });
+    renderBattle();
+    targets.forEach(function(t, i){
+      floatAt(rects[i], '+' + results[i], 'heal', i * 110);
+      ringAt(rects[i], ELS[actor.el], i * 110);
+    });
+  }
+  function lowestAlly(){
+    var list = B.allies.filter(function(a){ return a.alive; });
+    return list.sort(function(x, y){ return x.hp / x.maxHp - y.hp / y.maxHp; })[0] || B.allies[0];
+  }
+
+  function applySkill(actor, s, kind){
+    var color = ELS[actor.el];
+    if(s.taunt){
+      B.taunt = actor.key;
+      actor.reduce = 0.4;
+    }
+    if(s.target === 'heal' || s.target === 'healAll'){
+      healAllOrOne(actor, s);
+      ringAt(rectOf(actor.key), color, 0);
+      return;
+    }
+
+    var pool = B.enemies.filter(function(e){ return e.alive; });
+    var targets = [];
+    if(s.target === 'single'){
+      var t = targetEnemy(); if(t) targets = [t];
+    }else if(s.target === 'all'){
+      targets = pool;
+    }else if(s.target === 'two'){
+      targets = pool.slice(0, 2);
+    }else if(s.target === 'threeRandom'){
+      targets = shuffle(pool).slice(0, 3);
+    }
+
+    var rects = targets.map(function(t){ return rectOf(t.key); });
+    var results = [];
+    targets.forEach(function(t){
+      if(!t.alive) return;
+      var r = calcDamage(actor.atk, t.def, s.mult);
+      t.hp = Math.max(0, t.hp - r.dmg);
+      if(t.hp <= 0) t.alive = false;
+      results.push({t:t, dmg:r.dmg, crit:r.crit, dead:!t.alive});
+      log(actor.name + ' 对 ' + t.name + ' 造成 ' + r.dmg + ' 点伤害' + (r.crit ? '（暴击）' : ''), 'ally');
+      if(!t.alive) log(t.name + ' 被击败', 'sys');
+    });
+
+    renderBattle();
+    if(kind === 'basic'){
+      targets.forEach(function(t, i){
+        var rect = rects[i];
+        slashAt(rect, 0);
+        shakeAt(t.key, 0);
+        floatAt(rect, '-' + results[i].dmg, results[i].crit ? 'crit' : '', 0);
+      });
+    }else{
+      targets.forEach(function(t, i){
+        var rect = rects[i];
+        ringAt(rect, color, i * 120);
+        shakeAt(t.key, i * 120);
+        floatAt(rect, '-' + results[i].dmg, results[i].crit ? 'crit' : '', i * 120);
+      });
+    }
+    if(targets.length){
+      ringAt(rectOf(actor.key), color, 60);
+    }
+  }
+
+  function act(kind){
+    if(!B || B.busy || B.over || B.ulting || !B.active || B.active.side !== 'ally') return;
+    var a = B.active;
+    if(kind === 'skill' && B.sp <= 0){ toast('战技点不足'); return; }
+    if(kind === 'ult' && a.energy < 100){ toast('能量不足'); return; }
+
+    B.busy = true;
+    updateSkills();
+
+    var c = BYID[a.id];
+    var s = kind === 'basic' ? c.basic : kind === 'skill' ? c.skill : c.ult;
+    var delay = 700;
+
+    if(kind === 'basic'){
+      B.sp = Math.min(5, B.sp + 1);
+      a.energy = Math.min(100, a.energy + 25);
+    }else if(kind === 'skill'){
+      B.sp -= 1;
+      a.energy = Math.min(100, a.energy + 30);
+    }else{
+      a.energy = 0;
+      delay = 1250;
+      ultLayer(a, ELS[a.el], s.name);
+    }
+
+    applySkill(a, s, kind);
+    renderBattle();
+
+    setTimeout(function(){
+      if(!B) return;
+      B.active = null;
+      if(checkEnd()) return;
+      nextActor();
+    }, delay);
+  }
+
+  function enemyAct(e){
+    if(!B || B.over) return;
+    if(!e.alive){ nextActor(); return; }
+    var alive = B.allies.filter(function(a){ return a.alive; });
+    if(!alive.length){ defeat(); return; }
+
+    var taunt = B.allies.filter(function(a){ return a.alive && a.key === B.taunt; })[0];
+    var isAoe = e.boss && Math.random() < 0.4;
+    var targets = isAoe ? alive : [taunt || alive[Math.floor(Math.random() * alive.length)]];
+
+    var rects = targets.map(function(t){ return rectOf(t.key); });
+    targets.forEach(function(t, i){
+      var crit = Math.random() < 0.08;
+      var dmg = Math.max(1, Math.round(e.atk * 100 / (100 + t.def) * rand(0.92, 1.08) * (crit ? 1.5 : 1) * (1 - (t.reduce || 0))));
+      t.hp = Math.max(0, t.hp - dmg);
+      if(t.hp <= 0) t.alive = false;
+      log(e.name + ' 攻击 ' + t.name + '，造成 ' + dmg + ' 点伤害', 'enemy');
+      if(!t.alive) log(t.name + ' 倒下了', 'sys');
+      floatAt(rects[i], '-' + dmg, 'enemyDmg', i * 110);
+      shakeAt(t.key, i * 110);
+      ringAt(rects[i], '#ff6b6b', i * 110);
+    });
+    renderBattle();
+
+    setTimeout(function(){
+      if(checkEnd()) return;
+      nextActor();
+    }, 900);
+  }
+
+  function checkEnd(){
+    if(!B || B.over) return true;
+    if(B.enemies.every(function(e){ return !e.alive; })){ victory(); return true; }
+    if(B.allies.every(function(a){ return !a.alive; })){ defeat(); return true; }
+    return false;
+  }
+
+  function victory(){
+    B.over = true;
+    if(B.mode === 'dungeon'){
+      var d = B.diff;
+      var first = !state.dungeonClear[d.id];
+      state.dungeonClear[d.id] = true;
+      state.mats += d.mats;
+      state.orb += d.orb;
+      save(); renderLobby(); renderBattle();
+      showModal(
+        '<h3>副本通关</h3>' +
+        '<p>' + d.name + ' 已清剿完毕。</p>' +
+        '<p>获得 <b style="color:#7df0b0">' + d.mats + ' 升级材料</b> · <b style="color:#ffd166">' + d.orb + ' 星琼</b></p>' +
+        (first ? '<p style="color:#4be3a4">已解锁该副本扫荡：每次消耗 40 体力</p>' : '') +
+        '<p>当前体力：' + staminaInt() + ' / 300</p>',
+        [{label:'返回副本', fn:function(){ closeModal(); renderDungeon(); showScreen('Dungeon'); }},
+         {label:'再次挑战', cls:'primary', fn:function(){ closeModal(); startDungeon(d); }}]
+      );
+      return;
+    }
+    var orb = 20 + state.stage * 4;
+    var mats = 2 + state.stage;
+    state.orb += orb;
+    state.mats += mats;
+    var cleared = state.stage;
+    state.stage++;
+    save(); renderLobby(); renderBattle();
+
+    showModal(
+      '<h3>战斗胜利</h3>' +
+      '<p>第 ' + cleared + ' 关已清剿完毕。</p>' +
+      '<p>获得 <b style="color:#ffd166">' + orb + ' 星琼</b> · <b style="color:#7df0b0">' + mats + ' 升级材料</b></p>' +
+      '<p>下一关：第 ' + state.stage + ' 关' + (state.stage % 5 === 0 ? ' · BOSS 关' : '') + '</p>',
+      [{label:'返回大厅', fn:function(){ closeModal(); renderLobby(); showScreen('Lobby'); }},
+       {label:'继续挑战', cls:'primary', fn:function(){ closeModal(); startBattle(); }}]
+    );
+  }
+
+  function defeat(){
+    B.over = true;
+    var mode = B.mode, diff = B.diff;
+    save(); renderBattle();
+    showModal(
+      '<h3>战败</h3>' +
+      '<p>队伍被击败了。升级角色、调整队伍或去抽卡强化后再来。</p>' +
+      '<p>重新挑战不会损失任何资源。</p>',
+      [{label: mode === 'dungeon' ? '返回副本' : '返回大厅', fn:function(){
+          closeModal();
+          if(mode === 'dungeon'){ renderDungeon(); showScreen('Dungeon'); }
+          else { renderLobby(); showScreen('Lobby'); }
+        }},
+       {label:'重新挑战', cls:'primary', fn:function(){
+          closeModal();
+          if(mode === 'dungeon') startDungeon(diff); else startBattle();
+        }}]
+    );
+  }
+
+  // ---------- 事件 ----------
+  $('#btnStartBattle').addEventListener('click', function(){ startBattle(); });
+  $('#btnGacha').addEventListener('click', function(){ renderGacha(); showScreen('Gacha'); });
+  $('#btnTeam').addEventListener('click', function(){ renderTeam(); showScreen('Team'); });
+  $('#btnChars').addEventListener('click', function(){ renderChars(); showScreen('Chars'); });
+  $('#btnShop').addEventListener('click', function(){ renderShop(); showScreen('Shop'); });
+  $('#btnDungeon').addEventListener('click', function(){ renderDungeon(); showScreen('Dungeon'); });
+  $('#btnGachaBack').addEventListener('click', function(){ renderLobby(); showScreen('Lobby'); });
+  $('#btnTeamBack').addEventListener('click', function(){ renderLobby(); showScreen('Lobby'); });
+  $('#btnCharsBack').addEventListener('click', function(){ renderLobby(); showScreen('Lobby'); });
+  $('#btnShopBack').addEventListener('click', function(){ renderLobby(); showScreen('Lobby'); });
+  $('#btnDungeonBack').addEventListener('click', function(){ renderLobby(); showScreen('Lobby'); });
+  $('#btnQuit').addEventListener('click', function(){
+    if(!B || B.over){ showScreen('Lobby'); return; }
+    showModal('<h3>离开战斗？</h3><p>本场战斗进度会丢失，关卡不变。</p>',
+      [{label:'继续战斗', fn:closeModal},
+       {label:'离开', cls:'primary', fn:function(){ closeModal(); B = null; renderLobby(); showScreen('Lobby'); }}]);
+  });
+
+  $('#btnBasic').addEventListener('click', function(){ act('basic'); });
+  $('#btnSkill').addEventListener('click', function(){ act('skill'); });
+  $('#btnUlt').addEventListener('click', ultClick);
+  $('#btnAuto').addEventListener('click', toggleAuto);
+
+  $('#enemiesSide').addEventListener('click', function(ev){
+    var card = ev.target.closest ? ev.target.closest('.unit.enemy') : null;
+    if(!card || !B) return;
+    var key = card.getAttribute('data-key');
+    var e = B.enemies.filter(function(x){ return x.key === key; })[0];
+    if(!e || !e.alive) return;
+    B.selected = key;
+    renderBattle();
+  });
+
+  $('#teamGrid').addEventListener('click', function(ev){
+    var card = ev.target.closest ? ev.target.closest('.tcard') : null;
+    if(!card) return;
+    toggleTeam(card.getAttribute('data-id'));
+  });
+  $('#charGrid').addEventListener('click', function(ev){
+    var card = ev.target.closest ? ev.target.closest('.tcard') : null;
+    if(!card) return;
+    openCharPanel(card.getAttribute('data-id'));
+  });
+  $('#shopList').addEventListener('click', function(ev){
+    var btn = ev.target.closest ? ev.target.closest('[data-shop]') : null;
+    if(!btn) return;
+    buy(btn.getAttribute('data-shop'));
+  });
+  $('#dunList').addEventListener('click', function(ev){
+    var btn = ev.target.closest ? ev.target.closest('[data-diff]') : null;
+    if(!btn) return;
+    var d = DUNGEONS.filter(function(x){ return x.id === btn.getAttribute('data-diff'); })[0];
+    if(!d) return;
+    if(btn.getAttribute('data-act') === 'sweep') sweep(d);
+    else startDungeon(d);
+  });
+
+  $('#btnPull1').addEventListener('click', function(){ pull(1); });
+  $('#btnPull10').addEventListener('click', function(){ pull(10); });
+
+  // ---------- 启动 ----------
+  syncStamina();
+  lastStam = staminaInt();
+  renderLobby(); renderGacha();
+  setInterval(staminaTick, 1000);
+  window.addEventListener('pagehide', save);
+})();
+</script>
+</body>
+</html>
